@@ -1,32 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardAPI } from '../utils/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { dashboardAPI, accountsAPI } from '../utils/api';
 import {
   MonthlyBarChart,
-  CategoryDoughnutChart,
-  BalanceTrendChart
+  CategoryDoughnutChart
 } from '../components/FinancialChart';
 import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  PiggyBank,
   Calendar,
-  PieChart,
   AlertCircle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus
+  Plus,
+  Loader2,
+  Zap,
+  BarChart3,
+  PieChart
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState({
     accounts: [],
     monthlyStats: [],
     categoryStats: [],
     monthlyTrends: [],
-    totalBalance: 0
+    totalBalance: 0,
+    currentMonthStats: { income: 0, expenses: 0 }
   });
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -62,7 +64,7 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="card bg-rose-50 border-rose-100 p-12 text-center max-w-2xl mx-auto shadow-2xl shadow-rose-100">
+      <div className="card bg-rose-50 border-rose-100 p-12 text-center max-w-2xl mx-auto shadow-2xl shadow-rose-100 mt-12">
         <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-6" />
         <h2 className="text-2xl font-black text-slate-900 mb-2">Protocol Error</h2>
         <p className="text-slate-600 font-medium mb-8">{error}</p>
@@ -73,8 +75,8 @@ const Dashboard = () => {
 
   const stats = {
     totalBalance: dashboardData?.totalBalance || 0,
-    income: dashboardData?.currentMonthStats?.income || 0,
-    expenses: dashboardData?.currentMonthStats?.expenses || 0,
+    income: dashboardData?.monthlyStats?.find(s => s.type === 'INCOME')?.total || 0,
+    expenses: dashboardData?.monthlyStats?.find(s => s.type === 'EXPENSE')?.total || 0,
   };
 
   return (
@@ -131,31 +133,17 @@ const Dashboard = () => {
         {/* Left Column - Trends & Accounts */}
         <div className="lg:col-span-2 space-y-8">
           <div className="card bg-white p-8">
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl font-black text-slate-900">Capital Flow</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">30-day performance baseline</p>
-              </div>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button className="px-4 py-2 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Trend</button>
-                <button className="px-4 py-2 text-slate-400 text-[10px] font-black uppercase tracking-widest">Growth</button>
+                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <BarChart3 size={20} className="text-indigo-600" />
+                  Capital Flow
+                </h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Monthly Performance Analysis</p>
               </div>
             </div>
-            <div className="h-64 flex items-end justify-between gap-2">
-              {[40, 55, 30, 85, 45, 90, 60, 75, 50, 65, 80, 55, 70, 95].map((h, i) => (
-                <div key={i} className="group relative flex-1 h-full flex flex-col justify-end">
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    {h}%
-                  </div>
-                  <div
-                    className="w-full bg-slate-50 rounded-t-lg transition-all duration-700 relative overflow-hidden group-hover:bg-indigo-50"
-                    style={{ height: `${h}%` }}
-                  >
-                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600/10 h-full"></div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 w-full group-hover:bg-indigo-500" style={{ height: '4px' }}></div>
-                  </div>
-                </div>
-              ))}
+            <div className="min-h-[300px]">
+              <MonthlyBarChart data={dashboardData.monthlyTrends || []} />
             </div>
           </div>
 
@@ -183,7 +171,6 @@ const Dashboard = () => {
 
         {/* Right Column - Insights & Signals */}
         <div className="space-y-8">
-          {/* AI Insights Card */}
           <div className="card bg-slate-900 text-white p-8 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/40 transition-colors"></div>
             <div className="relative z-10">
@@ -197,6 +184,18 @@ const Dashboard = () => {
               <button className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl">
                 Activate Savings Protocol
               </button>
+            </div>
+          </div>
+
+          <div className="card bg-white p-8">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                <PieChart size={20} className="text-indigo-600" />
+                Category Map
+              </h2>
+            </div>
+            <div className="min-h-[300px]">
+              <CategoryDoughnutChart data={dashboardData.categoryStats || []} />
             </div>
           </div>
 
@@ -224,7 +223,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Floating Action Button */}
       <button
         onClick={() => navigate('/add-transaction')}
         className="fixed bottom-10 right-10 w-16 h-16 bg-slate-900 text-white rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 hover:rotate-90 transition-all z-50 group"
@@ -237,5 +235,23 @@ const Dashboard = () => {
     </div>
   );
 };
+
+const StatCard = ({ title, amount, icon: Icon, trend, color, trendType = 'up' }) => (
+  <div className="card bg-white p-8 relative overflow-hidden group hover:shadow-2xl transition-all border-slate-100">
+    <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-[0.03] rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700`}></div>
+    <div className="flex items-center justify-between mb-6">
+      <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg shadow-slate-200 group-hover:scale-110 transition-transform`}>
+        <Icon size={24} />
+      </div>
+      <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${trendType === 'up' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+        <span className="text-[8px] font-black uppercase tracking-widest">{trend}</span>
+      </div>
+    </div>
+    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</p>
+    <div className="flex items-baseline gap-1">
+      <span className="text-3xl font-black text-slate-900 tracking-tight">${parseFloat(amount).toLocaleString()}</span>
+    </div>
+  </div>
+);
 
 export default Dashboard;
