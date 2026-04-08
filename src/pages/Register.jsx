@@ -29,7 +29,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      const result = await register(formData.name, formData.email.trim(), formData.password);
+      const result = await register(formData.email.trim(), formData.password, formData.name);
       if (result.success) {
         navigate('/dashboard', { replace: true });
       } else {
