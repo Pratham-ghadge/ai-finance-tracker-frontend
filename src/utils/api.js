@@ -2,13 +2,13 @@
 import axios from 'axios';
 
 // Use absolute URL to your backend
-const API_BASE_URL = 'https://api-finance-tracker.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-finance-tracker.onrender.com/api';
 
 console.log('🔧 API Base URL:', API_BASE_URL);
 
 const API = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000, // Increased timeout for Render spin-up
 });
 
 // Add token to requests
@@ -17,15 +17,15 @@ API.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
+
   // Always set Content-Type for POST requests
   if (config.method === 'post' || config.method === 'put') {
     config.headers['Content-Type'] = 'application/json';
   }
-  
+
   console.log('🚀 Making API request to:', `${config.baseURL}${config.url}`);
   console.log('📦 Request data:', config.data);
-  
+
   return config;
 });
 
@@ -42,7 +42,7 @@ API.interceptors.response.use(
       message: error.message,
       data: error.response?.data
     });
-    
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -50,7 +50,7 @@ API.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

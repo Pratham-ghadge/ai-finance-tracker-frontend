@@ -1,27 +1,66 @@
 @import "tailwindcss";
 
-
-
-/* Tailwind base imports */
+/* Tailwind base imports - handled by @import "tailwindcss" in v4, 
+   but keeping these if the user is using a hybrid setup */
 @tailwind base;
 @tailwind components;   
 @tailwind utilities;
 
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary: #64748b;
+  --accent: #10b981;
+  --background: #f8fafc;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased font-sans transition-colors duration-300;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
 /* Custom reusable classes using @apply */
 @layer components {
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-6 rounded-xl 
+           transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]
+           shadow-lg shadow-indigo-200 focus:ring-4 focus:ring-indigo-100 outline-none;
   }
 
   .btn-secondary {
-    @apply bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold py-2.5 px-6 rounded-xl 
+           transition-all duration-200 shadow-sm focus:ring-4 focus:ring-slate-100 outline-none;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none
+           transition-all duration-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500
+           placeholder:text-slate-400;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl rounded-2xl;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-6 transition-all duration-300 hover:shadow-md;
   }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-500 font-bold;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
 }
