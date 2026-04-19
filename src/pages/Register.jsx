@@ -1,221 +1,144 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Lock, Loader2, ArrowRight, CheckCircle2, Trophy, Rocket } from 'lucide-react';
+import { ArrowRight, BadgeIndianRupee } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const Register = () => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
-  const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match');
+      setError('Passwords do not match');
+      return;
     }
 
     setLoading(true);
+
     try {
-      const result = await register(formData.email.trim(), formData.password, formData.name);
-      if (result.success) {
-        navigate('/dashboard', { replace: true });
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+      navigate('/dashboard', { replace: true });
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row animate-fade-in">
-      {/* Left Side: Poster & Features */}
-      <div className="lg:w-1/2 relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="/assets/images/auth-register.png"
-            alt="Financial Growth"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/90 via-slate-900/40 to-transparent"></div>
-        </div>
+    <div className="bg-auth flex items-center justify-center p-4">
+      <div className="auth-shell max-w-6xl w-full grid lg:grid-cols-2 gap-0 overflow-hidden rounded-[40px] shadow-2xl">
+        {/* Left Side: Modern Register Form */}
+        <section className="bg-white p-10 lg:p-16 flex flex-col justify-center order-2 lg:order-1">
+          <div className="max-w-md mx-auto w-full">
+            <header className="mb-8 text-center lg:text-left">
+              <h2 className="text-3xl font-extrabold text-slate-950 tracking-tight">Create Account</h2>
+              <p className="mt-2 text-slate-500">Join the future of financial intelligence</p>
+            </header>
 
-        {/* Brand Overlay */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-2xl">
-              <span className="text-slate-900 font-black italic">AF</span>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">AI Finance</span>
-          </div>
-        </div>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {error && <div className="alert-error py-4 px-6 mb-4">{error}</div>}
 
-        <div className="relative z-10 max-w-lg mb-12">
-          <h2 className="text-5xl font-black text-white leading-tight mb-6">
-            Your journey to <span className="text-emerald-400">financial freedom</span> starts here.
-          </h2>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4 text-slate-100/80">
-              <div className="mt-1 p-2 bg-white/10 rounded-lg backdrop-blur-md text-white">
-                <Trophy size={20} />
-              </div>
-              <p className="font-medium">Ranked #1 for intuitive personalized budgeting algorithms.</p>
-            </div>
-            <div className="flex items-start gap-4 text-slate-100/80">
-              <div className="mt-1 p-2 bg-white/10 rounded-lg backdrop-blur-md text-white">
-                <Rocket size={20} />
-              </div>
-              <p className="font-medium">Get started in under 60 seconds with our streamlined setup tool.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 text-slate-400 text-xs font-bold uppercase tracking-widest">
-          Secured Gateway • 256-bit SSL Protection
-        </div>
-      </div>
-
-      {/* Right Side: Register Form */}
-      <div className="flex-1 flex flex-col bg-slate-50 lg:bg-white px-6 py-12 lg:px-20 justify-center">
-        <div className="max-w-md w-full mx-auto">
-          <div className="mb-8 text-center lg:text-left">
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Create Account</h1>
-            <p className="text-slate-500 font-medium">Join 50,000+ users tracking their wealth.</p>
-          </div>
-
-          {error && (
-            <div className="bg-rose-50 text-rose-700 p-4 rounded-2xl mb-6 flex items-center gap-3 text-sm font-bold border border-rose-100 animate-shake">
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Identity</label>
-              <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 px-1">Full Name</label>
                 <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-slate-100 border-2 border-transparent focus:border-indigo-600/20 focus:bg-white rounded-xl pl-11 pr-4 py-3.5 text-slate-900 font-bold outline-none transition-all placeholder:text-slate-300 text-sm"
+                  className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-900 focus:ring-2 focus:ring-cyan-500 transition-all outline-none"
                   placeholder="John Doe"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Destination</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
+                  value={formData.name}
+                  onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
                   required
-                  className="w-full bg-slate-100 border-2 border-transparent focus:border-indigo-600/20 focus:bg-white rounded-xl pl-11 pr-4 py-3.5 text-slate-900 font-bold outline-none transition-all placeholder:text-slate-300 text-sm"
-                  placeholder="name@company.com"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 px-1">Email</label>
+                <input
+                  className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-900 focus:ring-2 focus:ring-cyan-500 transition-all outline-none"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={formData.email}
+                  onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400 px-1">Password</label>
                   <input
+                    className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-900 focus:ring-2 focus:ring-cyan-500 transition-all outline-none"
                     type="password"
-                    name="password"
+                    placeholder="••••••••"
                     value={formData.password}
-                    onChange={handleChange}
+                    onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
                     required
-                    className="w-full bg-slate-100 border-2 border-transparent focus:border-indigo-600/20 focus:bg-white rounded-xl pl-11 pr-4 py-3.5 text-slate-900 font-bold outline-none transition-all placeholder:text-slate-300 text-sm"
-                    placeholder="••••••••"
                   />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm</label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400 px-1">Confirm</label>
                   <input
+                    className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-900 focus:ring-2 focus:ring-cyan-500 transition-all outline-none"
                     type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-slate-100 border-2 border-transparent focus:border-indigo-600/20 focus:bg-white rounded-xl pl-11 pr-4 py-3.5 text-slate-900 font-bold outline-none transition-all placeholder:text-slate-300 text-sm"
                     placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(event) => setFormData((current) => ({ ...current, confirmPassword: event.target.value }))}
+                    required
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="pt-2">
               <button
-                type="submit"
+                className="w-full py-4 px-8 rounded-2xl bg-slate-950 text-white font-bold hover:bg-slate-800 transform active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6"
                 disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                type="submit"
               >
-                {loading ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create Account</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
+                {loading ? 'Launching...' : 'Create Account'}
+                {!loading && <ArrowRight size={18} />}
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="mt-8 text-center pt-6 border-t border-slate-100">
-            <p className="text-sm text-slate-600">
-              Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-bold text-indigo-600 hover:text-indigo-500 underline-offset-4 hover:underline"
-              >
-                Sign in
-              </Link>
+            <footer className="mt-8 pt-6 border-t border-slate-100 text-center lg:text-left">
+              <p className="text-slate-500 text-sm">
+                Already have an account?{' '}
+                <Link className="font-bold text-slate-950 hover:underline" to="/login">
+                  Sign In
+                </Link>
+              </p>
+            </footer>
+          </div>
+        </section>
+
+        {/* Right Side: Cinematic Poster */}
+        <section
+          className="auth-poster relative flex flex-col justify-end p-12 text-white order-1 lg:order-2"
+          style={{ backgroundImage: "url('/assets/images/auth-register.png')" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/90 to-transparent" />
+          <div className="relative z-10">
+            <div className="glass-badge mb-6 border-white/20 bg-white/5">The Next Level</div>
+            <h1 className="text-5xl font-bold leading-tight mb-4 text-balance">
+              Wealth building, automated.
+            </h1>
+            <p className="text-lg text-slate-200 max-w-md leading-relaxed">
+              Experience the 2.0 ecosystem with smart investments and total tax visibility.
             </p>
           </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-slate-400">
-          <div className="flex items-center gap-1">
-            <CheckCircle2 size={12} className="text-emerald-500" />
-            <span>Secure encryption</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle2 size={12} className="text-emerald-500" />
-            <span>AI insights</span>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

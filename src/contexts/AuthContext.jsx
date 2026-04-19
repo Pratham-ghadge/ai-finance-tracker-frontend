@@ -1,111 +1,60 @@
-// src/contexts/AuthContext.jsx
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { authAPI } from '../utils/api';
-
-const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+import { AuthContext } from './AuthContextValue';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuthStatus();
+    const boot = async () => {
+      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+
+      if (!token || !storedUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await authAPI.me();
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    boot();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
-      
-      console.log('🔄 Checking auth status...');
-      
-      if (token && userData) {
-        setUser(JSON.parse(userData));
-        console.log('✅ User authenticated from localStorage');
-      } else {
-        console.log('❌ No auth data in localStorage');
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('🚨 Auth check error:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+  const register = async (payload) => {
+    const response = await authAPI.register(payload);
+    localStorage.setItem('token', response.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+    setUser(response.data.user);
+    return response.data.user;
   };
 
-  const login = async (email, password) => {
-    try {
-      console.log('🔐 Attempting login for:', email);
-      const response = await authAPI.login(email, password);
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      
-      console.log('✅ Login successful');
-      
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Login failed:', error.response?.data || error.message);
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Login failed. Please try again.' 
-      };
-    }
-  };
-
-  const register = async (email, password, name) => {
-    try {
-      console.log('👤 Attempting registration for:', email);
-      const response = await authAPI.register(email, password, name);
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      
-      console.log('✅ Registration successful');
-      
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Registration failed:', error.response?.data || error.message);
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Registration failed. Please try again.' 
-      };
-    }
+  const login = async (payload) => {
+    const response = await authAPI.login(payload);
+    localStorage.setItem('token', response.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+    setUser(response.data.user);
+    return response.data.user;
   };
 
   const logout = () => {
-    console.log('🚪 Logging out...');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    console.log('✅ Logout successful');
-  };
-
-  const value = {
-    user,
-    login,
-    register,
-    logout,
-    loading
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

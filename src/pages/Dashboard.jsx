@@ -1,257 +1,301 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { dashboardAPI, accountsAPI } from '../utils/api';
-import {
-  MonthlyBarChart,
-  CategoryDoughnutChart
-} from '../components/FinancialChart';
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  Calendar,
-  AlertCircle,
-  Plus,
-  Loader2,
-  Zap,
-  BarChart3,
-  PieChart
-} from 'lucide-react';
+import { BadgeIndianRupee, BrainCircuit, Landmark, PieChart, Sparkles, UploadCloud, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { CategoryPieChart, MonthlyExpenseBarChart, SpendingTrendLine } from '../components/FinancialChart';
+import { dashboardAPI } from '../utils/api';
+import { useAuth } from '../hooks/useAuth';
+
+const currency = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(value || 0);
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState({
-    accounts: [],
-    monthlyStats: [],
-    categoryStats: [],
-    monthlyTrends: [],
-    totalBalance: 0,
-    currentMonthStats: { income: 0, expenses: 0 }
-  });
-  const [accounts, setAccounts] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [data, setData] = useState({
+    summary: {},
+    accounts: [],
+    recentTransactions: [],
+    monthlyTrends: [],
+    categoryExpenses: [],
+    sourceBreakdown: [],
+    topMerchants: [],
+    taxSummary: {},
+    investmentInsights: {},
+    sync: {},
+  });
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboard = async () => {
     try {
-      setLoading(true);
-      const [dbRes, accountsRes] = await Promise.all([
-        dashboardAPI.getData(),
-        accountsAPI.getAll()
-      ]);
-      setDashboardData(dbRes.data);
-      setAccounts(accountsRes.data.accounts || []);
-    } catch (err) {
-      console.error('Error fetching dashboard:', err);
-      setError('System failure while retrieving financial data. Please check your connection.');
+      const response = await dashboardAPI.get();
+      setData(response.data);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await dashboardAPI.sync();
+      await fetchDashboard();
+    } catch (err) {
+      console.error('Sync failed', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-        <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing Terminal...</p>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="h-12 w-12 animate-spin text-cyan-500" />
+          <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Initializing OS Finance...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="card bg-rose-50 border-rose-100 p-12 text-center max-w-2xl mx-auto shadow-2xl shadow-rose-100 mt-12">
-        <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-6" />
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Protocol Error</h2>
-        <p className="text-slate-600 font-medium mb-8">{error}</p>
-        <button onClick={fetchDashboardData} className="btn-primary px-8">Retry Connection</button>
-      </div>
-    );
+    return <div className="alert-error">{error}</div>;
   }
 
-  const stats = {
-    totalBalance: dashboardData?.totalBalance || 0,
-    income: dashboardData?.monthlyStats?.find(s => s.type === 'INCOME')?.total || 0,
-    expenses: dashboardData?.monthlyStats?.find(s => s.type === 'EXPENSE')?.total || 0,
+  const summaryCards = [
+    { label: 'Net worth snapshot', value: currency(data.summary.totalBalance), tone: 'mint' },
+    { label: 'Income this month', value: currency(data.summary.totalIncome), tone: 'sky' },
+    { label: 'Expenses this month', value: currency(data.summary.totalExpenses), tone: 'rose' },
+    { label: 'Automation rate', value: `${data.summary.automationRate || 0}%`, tone: 'slate' },
+  ];
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
   };
 
   return (
-    <div className="space-y-10 animate-fade-in pb-20">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Live Terminal Active</span>
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 pb-12"
+    >
+      <motion.section variants={item} className="relative overflow-hidden rounded-[44px] bg-slate-950 p-10 lg:p-16 text-white shadow-2xl dark:border dark:border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.1),transparent_40%)]" />
+        <div className="relative z-10 max-w-2xl">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-400">
+            Intelligent Control
           </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-            Wealth <span className="text-indigo-600">Console</span>
+          <h1 className="text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-6">
+            Wealth <span className="text-cyan-400 opacity-90">Simplified.</span>
           </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link to="/transactions" className="px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-sm shadow-sm hover:shadow-md transition-all border border-slate-100">
-            View Ledger
-          </Link>
-          <Link to="/add-transaction" className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-sm shadow-xl shadow-slate-200 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
-            <Plus size={18} />
-            Add Entry
-          </Link>
-        </div>
-      </div>
-
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard
-          title="Total Liquidity"
-          amount={stats.totalBalance}
-          icon={Wallet}
-          trend="+2.4% vs last cycle"
-          color="bg-indigo-600"
-        />
-        <StatCard
-          title="Consolidated Inflow"
-          amount={stats.income}
-          icon={TrendingUp}
-          trend="Positive"
-          color="bg-emerald-500"
-        />
-        <StatCard
-          title="Resource Outflow"
-          amount={stats.expenses}
-          icon={TrendingDown}
-          trend="Critical"
-          trendType="down"
-          color="bg-rose-500"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Trends & Accounts */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="card bg-white p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <BarChart3 size={20} className="text-indigo-600" />
-                  Capital Flow
-                </h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Monthly Performance Analysis</p>
-              </div>
-            </div>
-            <div className="min-h-[300px]">
-              <MonthlyBarChart data={dashboardData.monthlyTrends || []} />
-            </div>
-          </div>
-
-          <div className="card bg-white p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-black text-slate-900">Live Terminals</h2>
-              <Link to="/accounts" className="text-xs font-black text-indigo-600 uppercase tracking-widest hover:underline">Full Mapping</Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {accounts.slice(0, 4).map(account => (
-                <div key={account.id} className="p-5 bg-slate-50 rounded-2xl border border-transparent hover:border-slate-200 transition-all cursor-pointer group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900 font-bold group-hover:scale-110 transition-transform">
-                      {account.name.charAt(0)}
-                    </div>
-                    <span className="text-[8px] font-black uppercase text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{account.type}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm mb-1">{account.name}</h3>
-                  <p className="text-lg font-black text-slate-900">${parseFloat(account.balance).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Insights & Signals */}
-        <div className="space-y-8">
-          <div className="card bg-slate-900 text-white p-8 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/40 transition-colors"></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center mb-8 shadow-2xl shadow-indigo-900/40">
-                <Zap size={24} className="text-white fill-white animate-pulse" />
-              </div>
-              <h3 className="text-2xl font-black mb-4">Financial Insight</h3>
-              <p className="text-indigo-100/70 font-medium text-sm leading-relaxed mb-8">
-                Your spending on <span className="text-white font-bold">Food & Dining</span> is trending 18% higher than average. You could save <span className="text-emerald-400 font-bold">$240</span> this month by optimizing lunch expenses.
-              </p>
-              <button className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl">
-                Activate Savings Protocol
-              </button>
-            </div>
-          </div>
-
-          <div className="card bg-white p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                <PieChart size={20} className="text-indigo-600" />
-                Category Map
-              </h2>
-            </div>
-            <div className="min-h-[300px]">
-              <CategoryDoughnutChart data={dashboardData.categoryStats || []} />
-            </div>
-          </div>
-
-          <div className="card bg-white p-8">
-            <h2 className="text-xl font-black text-slate-900 mb-6">Activity Signals</h2>
-            <div className="space-y-6">
-              {[
-                { label: 'Deposit Detected', time: '2h ago', color: 'bg-emerald-500' },
-                { label: 'High Utilization', time: '4h ago', color: 'bg-rose-500' },
-                { label: 'New Terminal Added', time: 'Yesterday', color: 'bg-indigo-500' }
-              ].map((sig, i) => (
-                <div key={i} className="flex gap-4 items-start">
-                  <div className={`w-2 h-2 rounded-full ${sig.color} mt-2 shadow-lg shadow-slate-200`}></div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">{sig.label}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sig.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="w-full mt-10 py-3 bg-slate-50 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 hover:text-slate-600 transition-colors">
-              Historical Logs
+          <p className="text-lg text-slate-400 leading-relaxed mb-10 max-w-xl">
+            A minimalist, rule-based ecosystem to monitor your net worth, tax readiness, and family's resilience through automated intelligence.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <button
+              disabled={syncing}
+              className="flex items-center gap-3 rounded-2xl bg-white px-8 py-4 text-sm font-bold text-slate-950 hover:bg-slate-100 transition-all shadow-xl shadow-white/5 disabled:opacity-50"
+              onClick={handleSync}
+            >
+              {syncing ? <RefreshCw className="animate-spin" size={20} /> : <UploadCloud size={20} />}
+              {syncing ? 'Syncing...' : 'Sync Accounts'}
             </button>
+            <Link className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all" to="/investments">
+              <PieChart size={20} />
+              View Allocations
+            </Link>
           </div>
         </div>
-      </div>
+      </motion.section>
 
-      <button
-        onClick={() => navigate('/add-transaction')}
-        className="fixed bottom-10 right-10 w-16 h-16 bg-slate-900 text-white rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 hover:rotate-90 transition-all z-50 group"
-      >
-        <Plus size={32} />
-        <div className="absolute right-20 bg-slate-900 text-white text-[10px] font-black px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap uppercase tracking-[0.2em] pointer-events-none shadow-xl">
-          New Entry
-        </div>
-      </button>
-    </div>
+      <motion.section variants={item} className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.map((card) => (
+          <article className="panel p-8 group hover:scale-[1.02] transition-all duration-300 cursor-default" key={card.label}>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-4">{card.label}</p>
+            <h2 className="text-4xl font-black text-slate-950 dark:text-white tracking-tight group-hover:text-cyan-600 transition-colors">{card.value}</h2>
+          </article>
+        ))}
+      </motion.section>
+
+      <motion.section variants={item} className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+        <article className="panel">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Cashflow analytics</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Monthly income vs expense</h3>
+            </div>
+          </div>
+          <MonthlyExpenseBarChart data={data.monthlyTrends} />
+        </article>
+
+        <section className="grid gap-6 xl:grid-cols-1">
+          <article className="panel">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="rounded-2xl bg-rose-100 dark:bg-rose-900/30 p-3 text-rose-700 dark:text-rose-400">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Family Resilience</p>
+                <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Monthly Category Budgets</h3>
+              </div>
+            </div>
+            <div className="space-y-5">
+              {[
+                { label: 'Food & Dining', spent: (data.summary.totalExpenses || 0) * 0.4, limit: 15000, color: 'bg-emerald-500' },
+                { label: 'Children Education', spent: (data.summary.totalExpenses || 0) * 0.15, limit: user?.familyDetails?.educationBudget || 10000, color: 'bg-cyan-500' },
+                { label: 'Future Savings', spent: data.summary.netSavings > 0 ? data.summary.netSavings : 0, limit: user?.familyDetails?.savingsTarget || 20000, color: 'bg-indigo-500' },
+                { label: 'Emergency Reserve', spent: data.summary.totalBalance || 0, limit: data.investmentInsights.emergencyFundTarget || 50000, color: 'bg-amber-500' },
+              ].map((budget) => (
+                <div key={budget.label}>
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{budget.label}</span>
+                    <span className="text-slate-500">{currency(budget.spent)} / {currency(budget.limit)}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className={`h-full ${budget.color} transition-all duration-1000`}
+                      style={{ width: `${Math.min((budget.spent / budget.limit) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      </motion.section>
+
+      <motion.section variants={item} className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <article className="panel">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-cyan-100 dark:bg-cyan-900/30 p-3 text-cyan-800 dark:text-cyan-400">
+              <BrainCircuit size={20} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Automation status</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Import intelligence</h3>
+            </div>
+          </div>
+          <p className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+            {data.sync.status || 'AI engine is monitoring payment SMS and bank exports for automatic categorization.'}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {(data.sync.supportedImports || ['Bank SMS', 'UPI Alerts', 'CSV Exports']).map((item) => (
+              <span className="chip" key={item}>{item}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 p-3 text-emerald-700 dark:text-emerald-400">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Investment posture</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{data.investmentInsights.profile || 'Balanced'} profile</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Monthly surplus</p>
+              <p className="mt-2 text-xl font-bold text-slate-900 dark:text-white">{currency(data.investmentInsights.monthlySurplus)}</p>
+            </div>
+            <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Monthly Target</p>
+              <p className="mt-2 text-xl font-bold text-slate-900 dark:text-white">{currency(data.investmentInsights.suggestedMonthlyInvestment)}</p>
+            </div>
+          </div>
+        </article>
+      </motion.section>
+
+      <motion.section variants={item} className="grid gap-6 xl:grid-cols-2">
+        <article className="panel">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Recent transactions</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Latest income and expenses</h3>
+            </div>
+            <Link className="btn-secondary" to="/transactions">
+              View all
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {data.recentTransactions.length ? (
+              data.recentTransactions.map((transaction) => (
+                <div className="flex flex-col gap-2 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between" key={transaction.id}>
+                  <div>
+                    <p className="font-medium dark:text-white">{transaction.description}</p>
+                    <p className="text-sm text-slate-500">
+                      {transaction.category} • {transaction.account?.name || 'Unknown account'} • {new Date(transaction.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-lg font-semibold ${transaction.type === 'INCOME' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                      {transaction.type === 'INCOME' ? '+' : '-'}
+                      {currency(transaction.amount)}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500">{transaction.source}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No transactions yet.</p>
+            )}
+          </div>
+        </article>
+
+        <article className="panel">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-2xl bg-amber-100 dark:bg-amber-900/30 p-3 text-amber-700 dark:text-amber-400">
+              <BadgeIndianRupee size={20} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Income tax estimate</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Annual tax snapshot</h3>
+            </div>
+          </div>
+          <div className="grid gap-4 grid-cols-2">
+            <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Old regime</p>
+              <p className="mt-2 text-xl font-bold text-slate-900 dark:text-white">{currency(data.taxSummary.estimatedOldRegimeTax)}</p>
+            </div>
+            <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500">New regime</p>
+              <p className="mt-2 text-xl font-bold text-slate-900 dark:text-white">{currency(data.taxSummary.estimatedNewRegimeTax)}</p>
+            </div>
+          </div>
+          <div className="mt-5 rounded-3xl border border-cyan-100 dark:border-cyan-900/30 bg-cyan-50 dark:bg-cyan-900/20 p-5">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-800 dark:text-cyan-400">Suggested regime</p>
+            <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">{data.taxSummary.betterRegime || 'NEW'} looks optimal.</p>
+          </div>
+        </article>
+      </motion.section>
+    </motion.div>
   );
 };
-
-const StatCard = ({ title, amount, icon: Icon, trend, color, trendType = 'up' }) => (
-  <div className="card bg-white p-8 relative overflow-hidden group hover:shadow-2xl transition-all border-slate-100">
-    <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-[0.03] rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700`}></div>
-    <div className="flex items-center justify-between mb-6">
-      <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg shadow-slate-200 group-hover:scale-110 transition-transform`}>
-        <Icon size={24} />
-      </div>
-      <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${trendType === 'up' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
-        <span className="text-[8px] font-black uppercase tracking-widest">{trend}</span>
-      </div>
-    </div>
-    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</p>
-    <div className="flex items-baseline gap-1">
-      <span className="text-3xl font-black text-slate-900 tracking-tight">${parseFloat(amount).toLocaleString()}</span>
-    </div>
-  </div>
-);
 
 export default Dashboard;
